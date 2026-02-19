@@ -19,7 +19,7 @@ SAMPLE_RATE = 16000
 
 
 def log(msg):
-    print(f"[whisper-flow] {msg}", flush=True)
+    print(f"[philoquent] {msg}", flush=True)
 
 
 class WhisperFlowApp(rumps.App):
@@ -31,11 +31,12 @@ class WhisperFlowApp(rumps.App):
         self.inserter = TextInserter()
         self.overlay = Overlay()
         self._busy = False
+        self._fn_held = False
         self._tab_held = False
 
         # Menu items
         self._status = rumps.MenuItem("Ready")
-        self._hotkey = rumps.MenuItem("Hold Tab to record")
+        self._hotkey = rumps.MenuItem("Hold Fn+Tab to record")
 
         self.menu = [
             self._status,
@@ -52,10 +53,17 @@ class WhisperFlowApp(rumps.App):
         )
         self._listener.daemon = True
         self._listener.start()
-        log("Ready — hold Tab to record")
+        log("Ready — hold Fn+Tab to record")
+
+    @staticmethod
+    def _is_fn(key):
+        """Check if key is the Fn/Globe key (macOS vk=63)."""
+        return hasattr(key, 'vk') and key.vk == 63
 
     def _on_press(self, key):
-        if key == keyboard.Key.tab and not self._busy and not self._tab_held:
+        if self._is_fn(key):
+            self._fn_held = True
+        if key == keyboard.Key.tab and self._fn_held and not self._busy and not self._tab_held:
             self._tab_held = True
             log("Recording started")
             self.recorder.start()
@@ -67,6 +75,8 @@ class WhisperFlowApp(rumps.App):
             threading.Thread(target=self._stream_loop, daemon=True).start()
 
     def _on_release(self, key):
+        if self._is_fn(key):
+            self._fn_held = False
         if key == keyboard.Key.tab and self._tab_held:
             self._tab_held = False
             audio = self.recorder.stop()
@@ -136,17 +146,17 @@ class WhisperFlowApp(rumps.App):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Whisper Flow — local voice-to-text")
+    parser = argparse.ArgumentParser(description="Philoquent — local voice-to-text")
     parser.add_argument("--model", default="base", choices=["tiny", "base", "small", "medium", "large-v3"],
                         help="Whisper model size (default: base)")
     parser.add_argument("--language", default="en", help="Transcription language (default: en)")
     args = parser.parse_args()
 
-    print("Whisper Flow v0.1.0")
+    print("Philoquent v0.1.0")
     print("─" * 40)
     print(f"Model:    {args.model}")
     print(f"Language: {args.language}")
-    print(f"Hotkey:   Hold Tab to record")
+    print(f"Hotkey:   Hold Fn+Tab to record")
     print()
     print("Requires macOS permissions:")
     print("  • Accessibility (System Settings → Privacy → Accessibility)")

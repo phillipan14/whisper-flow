@@ -1,72 +1,86 @@
-# Whisper Flow
+# Philoquent
 
-Local voice-to-text for macOS. Hold Tab, speak, release — transcribed text is inserted at your cursor.
+Local voice-to-text for macOS. Hold Fn+Tab, speak, release — transcribed text is inserted at your cursor.
 
 ![macOS](https://img.shields.io/badge/macOS-only-blue) ![Python 3.11+](https://img.shields.io/badge/python-3.11+-green) ![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)
 
-## How it works
-
-1. **Hold Tab** — recording starts, overlay appears with a pulsing red dot
-
-   <img src="assets/recording.png" alt="Recording state" width="500">
-
-2. **Speak** — live streaming transcription appears as you talk
-
-   <img src="assets/streaming.png" alt="Streaming transcription" width="500">
-
-3. **Release Tab** — final transcription runs with the full model
-
-   <img src="assets/transcribing.png" alt="Transcribing state" width="500">
-
-4. **Done** — accurate text is inserted at your cursor
-
-   <img src="assets/result.png" alt="Result state" width="500">
-
-Uses [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2) for fast local inference. Dual-model approach: `tiny` model for real-time streaming preview, `base` (or larger) model for accurate final transcription.
-
 **Everything runs locally. No API calls. No data leaves your machine.**
 
-## Install
+## Quick Install
+
+Paste this into Terminal (Finder > Applications > Utilities > Terminal):
 
 ```bash
-git clone https://github.com/phillipan14/whisper-flow.git
-cd whisper-flow
-python3.11 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+curl -fsSL https://raw.githubusercontent.com/phillipan14/philoquent/main/install.sh | bash
 ```
 
-## Usage
+Then start it:
 
 ```bash
-python -m whisper_flow
+philoquent
 ```
 
-### Options
+That's it. First launch downloads the speech model (~150MB, one time only).
 
-```
---model {tiny,base,small,medium,large-v3}   Whisper model size (default: base)
---language LANG                               Transcription language (default: en)
-```
+## How it works
 
-Larger models are more accurate but slower. `base` is a good balance for most use cases.
+1. **Hold Fn+Tab** — recording starts, a floating overlay appears
 
-```bash
-# Use the small model for better accuracy
-python -m whisper_flow --model small
+   <img src="assets/recording.png" alt="Recording — listening for speech" width="500">
 
-# Transcribe in Spanish
-python -m whisper_flow --language es
-```
+2. **Speak** — live transcription appears in real time as you talk
+
+   <img src="assets/streaming.png" alt="Live streaming transcription" width="500">
+
+3. **Release Fn+Tab** — final transcription runs for accuracy
+
+   <img src="assets/transcribing.png" alt="Processing final transcription" width="500">
+
+4. **Done** — text is automatically pasted at your cursor
+
+   <img src="assets/result.png" alt="Transcription complete" width="500">
+
+Uses [faster-whisper](https://github.com/SYSTRAN/faster-whisper) for fast local inference. Dual-model approach: `tiny` model for real-time preview, `base` (or larger) for accurate final output.
 
 ## macOS Permissions
 
-You'll need to grant two permissions in **System Settings > Privacy & Security**:
+On first run, macOS will ask you to grant two permissions in **System Settings > Privacy & Security**:
 
-- **Accessibility** — for keyboard listening and text insertion
-- **Microphone** — for audio recording
+| Permission | Why |
+|---|---|
+| **Accessibility** | Listens for the Fn+Tab hotkey and pastes text at your cursor |
+| **Microphone** | Records your voice for transcription |
 
-## Architecture
+## Options
+
+```bash
+# Better accuracy (slower)
+philoquent --model small
+
+# Fastest (less accurate)
+philoquent --model tiny
+
+# Transcribe in another language
+philoquent --language es
+```
+
+Available models: `tiny` (fastest), `base` (default), `small`, `medium`, `large-v3` (most accurate).
+
+## Manual Install
+
+If you prefer to install manually:
+
+```bash
+git clone https://github.com/phillipan14/philoquent.git
+cd philoquent
+python3.11 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+pip install pyobjc-framework-Cocoa pyobjc-framework-Quartz
+python -m whisper_flow
+```
+
+## How it's built
 
 ```
 whisper_flow/
@@ -79,9 +93,9 @@ whisper_flow/
 
 ## Requirements
 
-- macOS (uses AppKit/PyObjC for the overlay, rumps for menu bar)
-- Python 3.11+
-- A microphone
+- macOS (Apple Silicon or Intel)
+- Python 3.11+ (install via `brew install python@3.11` if needed)
+- A microphone (built-in works fine)
 
 ## License
 
