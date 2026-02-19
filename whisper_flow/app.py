@@ -7,6 +7,7 @@ import time
 import rumps
 from pynput import keyboard
 
+from .bundle_utils import is_frozen
 from .recorder import AudioRecorder
 from .transcriber import Transcriber
 from .inserter import TextInserter
@@ -146,22 +147,33 @@ class WhisperFlowApp(rumps.App):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Philoquent — local voice-to-text")
-    parser.add_argument("--model", default="base", choices=["tiny", "base", "small", "medium", "large-v3"],
-                        help="Whisper model size (default: base)")
-    parser.add_argument("--language", default="en", help="Transcription language (default: en)")
-    args = parser.parse_args()
+    if is_frozen():
+        # Bundled .app — no CLI args, check permissions
+        model_size = "base"
+        language = "en"
+        from .first_run import check_accessibility
+        from AppKit import NSApplication
+        NSApplication.sharedApplication()
+        check_accessibility()
+    else:
+        parser = argparse.ArgumentParser(description="Philoquent — local voice-to-text")
+        parser.add_argument("--model", default="base", choices=["tiny", "base", "small", "medium", "large-v3"],
+                            help="Whisper model size (default: base)")
+        parser.add_argument("--language", default="en", help="Transcription language (default: en)")
+        args = parser.parse_args()
+        model_size = args.model
+        language = args.language
 
-    print("Philoquent v0.1.0")
-    print("─" * 40)
-    print(f"Model:    {args.model}")
-    print(f"Language: {args.language}")
-    print(f"Hotkey:   Hold Fn+Tab to record")
-    print()
-    print("Requires macOS permissions:")
-    print("  • Accessibility (System Settings → Privacy → Accessibility)")
-    print("  • Microphone   (System Settings → Privacy → Microphone)")
-    print()
+        print("Philoquent v0.1.0")
+        print("─" * 40)
+        print(f"Model:    {model_size}")
+        print(f"Language: {language}")
+        print(f"Hotkey:   Hold Fn+Tab to record")
+        print()
+        print("Requires macOS permissions:")
+        print("  • Accessibility (System Settings → Privacy → Accessibility)")
+        print("  • Microphone   (System Settings → Privacy → Microphone)")
+        print()
 
-    app = WhisperFlowApp(model_size=args.model, language=args.language)
+    app = WhisperFlowApp(model_size=model_size, language=language)
     app.run()

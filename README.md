@@ -6,9 +6,15 @@ Local voice-to-text for macOS. Hold Fn+Tab, speak, release — transcribed text 
 
 **Everything runs locally. No API calls. No data leaves your machine.**
 
-## Quick Install
+## Download
 
-Paste this into Terminal (Finder > Applications > Utilities > Terminal):
+**[Download Philoquent.dmg](https://github.com/phillipan14/philoquent/releases/latest/download/Philoquent-0.1.0.dmg)** (71 MB, macOS only)
+
+Open the DMG, drag Philoquent to Applications, double-click to launch. That's it. First launch downloads the speech model (~150MB, one time).
+
+> On first open, macOS may say "can't be opened because it's from an unidentified developer." Right-click the app > Open > Open to bypass this.
+
+## Alternative: Install via Terminal
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/phillipan14/philoquent/main/install.sh | bash
