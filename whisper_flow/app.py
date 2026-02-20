@@ -32,12 +32,15 @@ class WhisperFlowApp(rumps.App):
         self.inserter = TextInserter()
         self.overlay = Overlay()
         self._busy = False
-        self._fn_held = False
-        self._tab_held = False
+        self._shift_held = False
+        self._shift_cancelled = False
+        self._recording_active = False
+        self._shift_press_time = 0.0
+        self._hold_threshold = 0.3  # seconds before shift-hold triggers recording
 
         # Menu items
         self._status = rumps.MenuItem("Ready")
-        self._hotkey = rumps.MenuItem("Hold Fn+Tab to record")
+        self._hotkey = rumps.MenuItem("Hold Shift to record")
 
         self.menu = [
             self._status,
@@ -54,32 +57,40 @@ class WhisperFlowApp(rumps.App):
         )
         self._listener.daemon = True
         self._listener.start()
-        log("Ready — hold Fn+Tab to record")
+        log("Ready — hold Shift to record")
 
     @staticmethod
-    def _is_fn(key):
-        """Check if key is the Fn/Globe key (macOS vk=63)."""
-        return hasattr(key, 'vk') and key.vk == 63
+    def _is_shift(key):
+        return key in (keyboard.Key.shift, keyboard.Key.shift_r, keyboard.Key.shift_l)
 
     def _on_press(self, key):
-        if self._is_fn(key):
-            self._fn_held = True
-        if key == keyboard.Key.tab and self._fn_held and not self._busy and not self._tab_held:
-            self._tab_held = True
+        if self._is_shift(key):
+            if not self._shift_held and not self._busy:
+                self._shift_held = True
+                self._shift_cancelled = False
+                self._shift_press_time = time.monotonic()
+                threading.Timer(self._hold_threshold, self._check_shift_hold).start()
+        else:
+            # Any other key while shift is held = normal typing (e.g. Shift+A)
+            if self._shift_held and not self._recording_active:
+                self._shift_cancelled = True
+
+    def _check_shift_hold(self):
+        if self._shift_held and not self._shift_cancelled and not self._busy and not self._recording_active:
+            self._recording_active = True
             log("Recording started")
             self.recorder.start()
             self.title = "🔴"
             self._status.title = "Recording..."
             self.overlay.show_recording()
-
-            # Start streaming transcription in background
             threading.Thread(target=self._stream_loop, daemon=True).start()
 
     def _on_release(self, key):
-        if self._is_fn(key):
-            self._fn_held = False
-        if key == keyboard.Key.tab and self._tab_held:
-            self._tab_held = False
+        if self._is_shift(key) and self._shift_held:
+            self._shift_held = False
+            if not self._recording_active:
+                return  # was a quick tap or cancelled — do nothing
+            self._recording_active = False
             audio = self.recorder.stop()
             duration = len(audio) / SAMPLE_RATE if len(audio) > 0 else 0
             log(f"Recording stopped — {duration:.1f}s")
@@ -99,12 +110,12 @@ class WhisperFlowApp(rumps.App):
     def _stream_loop(self):
         """Periodically transcribe accumulated audio for live text feedback."""
         time.sleep(STREAM_INITIAL_DELAY)
-        while self._tab_held and self.recorder.is_recording:
+        while self._recording_active and self.recorder.is_recording:
             audio = self.recorder.get_audio_snapshot()
             if len(audio) > MIN_AUDIO_SECONDS * SAMPLE_RATE:
                 try:
                     text = self.transcriber.transcribe_stream(audio)
-                    if text and self._tab_held:
+                    if text and self._recording_active:
                         log(f"Stream: '{text[:60]}'")
                         self.overlay.show_streaming(text)
                 except Exception:
@@ -168,7 +179,7 @@ def main():
         print("─" * 40)
         print(f"Model:    {model_size}")
         print(f"Language: {language}")
-        print(f"Hotkey:   Hold Fn+Tab to record")
+        print(f"Hotkey:   Hold Shift to record")
         print()
         print("Requires macOS permissions:")
         print("  • Accessibility (System Settings → Privacy → Accessibility)")
